@@ -1,6 +1,7 @@
 import { z } from "zod";import { publicProcedure, router } from "../_core/trpc";
 import { queryTidb, getCached, setCached } from "../tidb";
 import { getAllOverrides } from "../affiliationOverrides";
+import { getCandidateProfile } from "../divulgacand";
 import { gunzipSync } from "zlib";
 
 // ─── CONSTANTES ──────────────────────────────────────────────────────────────
@@ -991,6 +992,20 @@ export const psbRouter = router({
       if (!rows.length) throw new Error("Político não encontrado");
       const r = rows[0];
 
+      // Buscar foto real do DivulgaCand
+      let divulgaFotoUrl: string | null = null;
+      try {
+        const divulga = await getCandidateProfile({
+          sequencial: r.candidatoSequencial,
+          ano: Number(r.ano),
+          cargo: r.cargo,
+          uf: r.uf,
+        });
+        divulgaFotoUrl = divulga?.fotoUrl ?? null;
+      } catch (_) {
+        // fallback para URL estática se DivulgaCand não responder
+      }
+
       const result = {
         sequencial: r.candidatoSequencial,
         name: r.candidatoNome,
@@ -1011,166 +1026,157 @@ export const psbRouter = router({
           ? Math.round((Number(r.despesaTotal ?? 0) / Number(r.totalVotos)) * 100) / 100
           : 0,
         cpf: r.cpf ?? "",
-        photoUrl: getPhotoUrl(r.candidatoSequencial, r.uf, Number(r.ano), r.cargo),
+        photoUrl: divulgaFotoUrl ?? getPhotoUrl(r.candidatoSequencial, r.uf, Number(r.ano), r.cargo),
       };
 
-      setCached(cacheKey, result, 604800);
+      setCached(cacheKey, result, 86400); // 24h para foto atualizar
       return result;
     }),
 
-  // ─── HISTÓRICO ELEITORAL DO POLÍTICO (por CPF, sem duplicatas) ───────────────
+  // ─── HISTÓRICO ELEITORAL DO POLÍTICO (DivulgaCand + banco local) ────────────
   getPoliticianHistory: publicProcedure
     .input(z.object({ sequencial: z.string() }))
     .query(async ({ input }) => {
-      const cacheKey = `psb:politician:history:v3:${input.sequencial}`;
+      const cacheKey = `psb:politician:history:v4:${input.sequencial}`;
       const cached = getCached<unknown>(cacheKey);
       if (cached) return cached;
 
-      const nameRows = await queryTidb<{ candidatoNome: string; cpf: string; uf: string }>(
-        `SELECT candidatoNome, cpf, uf FROM candidate_results WHERE candidatoSequencial=? LIMIT 1`,
+      // 1. Buscar dados básicos do candidato no banco local
+      const nameRows = await queryTidb<{ candidatoNome: string; cpf: string; uf: string; cargo: string; ano: number }>(
+        `SELECT candidatoNome, cpf, uf, cargo, ano FROM candidate_results WHERE candidatoSequencial=? ORDER BY ano DESC LIMIT 1`,
         [input.sequencial]
       );
 
       if (!nameRows.length) return [];
-      const { candidatoNome, cpf, uf } = nameRows[0];
+      const { candidatoNome, cpf, uf, cargo, ano } = nameRows[0];
 
-      // Busca histórico - usa UNION de CPF + nome COLLATE para cobrir anos sem CPF (ex: 2018)
-      // Agrupa por ano+cargo para evitar duplicatas
-      let rows: Array<{
+      // 2. Buscar todas as eleições do banco local (para votos reais)
+      const localRows = await queryTidb<{
         ano: number; cargo: string; uf: string; turno: number;
         totalVotos: number; percentualSobreValidos: number; situacao: string;
         eleito: number; receitaTotal: number; despesaTotal: number;
         partidoSigla: string; candidatoSequencial: string; nomeMunicipio: string;
-      }>;
+      }>(
+        cpf && cpf.length > 5
+          ? `SELECT cr.ano, cr.cargo, cr.uf, cr.turno, cr.totalVotos, cr.percentualSobreValidos,
+                    cr.situacao, cr.eleito, cr.receitaTotal, cr.despesaTotal, cr.partidoSigla,
+                    cr.candidatoSequencial, czr.nomeMunicipio
+             FROM candidate_results cr
+             LEFT JOIN (
+               SELECT candidatoSequencial, nomeMunicipio, ano
+               FROM candidate_zone_results GROUP BY candidatoSequencial, nomeMunicipio, ano
+             ) czr ON cr.candidatoSequencial = czr.candidatoSequencial AND cr.ano = czr.ano
+             WHERE cr.cpf=? ORDER BY cr.ano ASC, cr.turno ASC`
+          : `SELECT cr.ano, cr.cargo, cr.uf, cr.turno, cr.totalVotos, cr.percentualSobreValidos,
+                    cr.situacao, cr.eleito, cr.receitaTotal, cr.despesaTotal, cr.partidoSigla,
+                    cr.candidatoSequencial, czr.nomeMunicipio
+             FROM candidate_results cr
+             LEFT JOIN (
+               SELECT candidatoSequencial, nomeMunicipio, ano
+               FROM candidate_zone_results GROUP BY candidatoSequencial, nomeMunicipio, ano
+             ) czr ON cr.candidatoSequencial = czr.candidatoSequencial AND cr.ano = czr.ano
+             WHERE cr.candidatoNome COLLATE utf8mb4_general_ci LIKE ? AND cr.uf=?
+             ORDER BY cr.ano ASC, cr.turno ASC`,
+        cpf && cpf.length > 5
+          ? [cpf]
+          : [candidatoNome.split(' ').slice(0, 2).join(' ') + '%', uf]
+      );
 
-      // Query principal: candidate_results com UNION CPF + nome COLLATE
-      // O UNION garante que anos sem CPF (ex: 2018) também sejam incluídos
-      const namePrefixForMain = candidatoNome.split(' ').slice(0, 2).join(' ') + '%';
-      const mainQuery = cpf && cpf.length > 5 ? `
-        SELECT cr.ano, cr.cargo, cr.uf, cr.turno, cr.totalVotos, cr.percentualSobreValidos,
-               cr.situacao, cr.eleito, cr.receitaTotal, cr.despesaTotal, cr.partidoSigla,
-               cr.candidatoSequencial,
-               czr.nomeMunicipio
-        FROM candidate_results cr
-        LEFT JOIN (
-          SELECT candidatoSequencial, nomeMunicipio, ano
-          FROM candidate_zone_results
-          GROUP BY candidatoSequencial, nomeMunicipio, ano
-        ) czr ON cr.candidatoSequencial = czr.candidatoSequencial AND cr.ano = czr.ano
-        WHERE cr.cpf=?
-        UNION
-        SELECT cr.ano, cr.cargo, cr.uf, cr.turno, cr.totalVotos, cr.percentualSobreValidos,
-               cr.situacao, cr.eleito, cr.receitaTotal, cr.despesaTotal, cr.partidoSigla,
-               cr.candidatoSequencial,
-               czr.nomeMunicipio
-        FROM candidate_results cr
-        LEFT JOIN (
-          SELECT candidatoSequencial, nomeMunicipio, ano
-          FROM candidate_zone_results
-          GROUP BY candidatoSequencial, nomeMunicipio, ano
-        ) czr ON cr.candidatoSequencial = czr.candidatoSequencial AND cr.ano = czr.ano
-        WHERE cr.candidatoNome COLLATE utf8mb4_general_ci LIKE ? AND cr.uf=?
-        ORDER BY ano ASC, turno ASC
-      ` : `
-        SELECT cr.ano, cr.cargo, cr.uf, cr.turno, cr.totalVotos, cr.percentualSobreValidos,
-               cr.situacao, cr.eleito, cr.receitaTotal, cr.despesaTotal, cr.partidoSigla,
-               cr.candidatoSequencial,
-               czr.nomeMunicipio
-        FROM candidate_results cr
-        LEFT JOIN (
-          SELECT candidatoSequencial, nomeMunicipio, ano
-          FROM candidate_zone_results
-          GROUP BY candidatoSequencial, nomeMunicipio, ano
-        ) czr ON cr.candidatoSequencial = czr.candidatoSequencial AND cr.ano = czr.ano
-        WHERE cr.candidatoNome=? AND cr.uf=?
-        ORDER BY cr.ano ASC, cr.turno ASC
-      `;
-      const mainParams = cpf && cpf.length > 5
-        ? [cpf, namePrefixForMain, uf]
-        : [candidatoNome, uf];
-      rows = await queryTidb(mainQuery, mainParams);
-
-      // Complementar com dados da tabela candidates (DivulgaCand) para anos sem CPF (ex: 2010)
-      // Usa COLLATE utf8mb4_general_ci para ignorar acentos, e prefixo das 2 primeiras palavras
-      // para cobrir variações de nome (ex: "LIDICE DA MATA" vs "LÍDICE DA MATA E SOUZA")
-      const existingYears = new Set(rows.map(r => Number(r.ano)));
-      try {
-        // Extrair prefixo: primeiras 2 palavras do nome (sem acento via COLLATE)
-        const nameParts = candidatoNome.split(' ');
-        const namePrefix = nameParts.slice(0, 2).join(' ') + '%';
-        const candidatesRows = await queryTidb<{
-          ano: number; cargo: string; uf: string; situacao: string; eleito: number;
-          partidoSigla: string; sequencial: string;
-        }>(
-          `SELECT ano, cargo, uf, situacao, eleito, partidoSigla, sequencial
-           FROM candidates
-           WHERE nome COLLATE utf8mb4_general_ci LIKE ? AND uf=?
-           ORDER BY ano ASC`,
-          [namePrefix, uf]
-        );
-        for (const c of candidatesRows) {
-          const yr = Number(c.ano);
-          if (!existingYears.has(yr)) {
-            rows.push({
-              ano: yr,
-              cargo: c.cargo,
-              uf: c.uf ?? uf,
-              turno: 1,
-              totalVotos: 0,
-              percentualSobreValidos: 0,
-              situacao: c.situacao ?? "ELEITO",
-              eleito: c.eleito ?? 1,
-              receitaTotal: 0,
-              despesaTotal: 0,
-              partidoSigla: c.partidoSigla,
-              candidatoSequencial: c.sequencial ?? input.sequencial,
-              nomeMunicipio: "",
-            });
-            existingYears.add(yr);
-          }
-        }
-      } catch (_) { /* tabela candidates pode não existir em todos os ambientes */ }
-
-      // Agrupa por ano+cargo, priorizando turno 2 se eleito, senão turno 1
-      const grouped: Record<string, typeof rows[0]> = {};
-      rows.forEach(r => {
+      // Indexar banco local por ano+cargo para cruzamento rápido
+      const localByYearCargo: Record<string, typeof localRows[0]> = {};
+      for (const r of localRows) {
         const key = `${r.ano}-${r.cargo}`;
-        const existing = grouped[key];
-        if (!existing) {
-          grouped[key] = r;
-        } else {
-          // Prefere turno 2 se eleito, senão mantém o turno com mais votos
-          if (r.eleito && !existing.eleito) {
-            grouped[key] = r;
-          } else if (r.turno === 2 && existing.turno === 1 && r.eleito) {
-            grouped[key] = r;
-          }
+        const existing = localByYearCargo[key];
+        if (!existing || (r.eleito && !existing.eleito) || (r.turno === 2 && existing.turno === 1 && r.eleito)) {
+          localByYearCargo[key] = r;
         }
-      });
+      }
 
-      const result = Object.values(grouped)
-        .sort((a, b) => a.ano - b.ano)
-        .map(r => ({
-          year: Number(r.ano),
-          cargo: r.cargo,
-          uf: r.uf,
-          municipality: r.nomeMunicipio ?? "",
-          party: r.partidoSigla,
-          votes: Number(r.totalVotos),
-          percentage: Number(r.percentualSobreValidos),
-          situation: r.situacao,
-          elected: Boolean(r.eleito),
-          receipt: Number(r.receitaTotal ?? 0),
-          expense: Number(r.despesaTotal ?? 0),
-          costPerVote: r.totalVotos > 0
-            ? Math.round((Number(r.despesaTotal ?? 0) / Number(r.totalVotos)) * 100) / 100
-            : 0,
-          sequencial: r.candidatoSequencial,
-          photoUrl: getPhotoUrl(r.candidatoSequencial, r.uf, Number(r.ano), r.cargo),
-        }));
+      // 3. Buscar perfil completo no DivulgaCand (foto + eleicoesAnteriores)
+      let divulga = null;
+      try {
+        divulga = await getCandidateProfile({
+          sequencial: input.sequencial,
+          ano: Number(ano),
+          cargo,
+          uf,
+        });
+      } catch (err) {
+        console.warn("[DivulgaCand] Falha ao buscar perfil:", err);
+      }
 
-      setCached(cacheKey, result, 604800);
-      return result;
+      const fotoUrl = divulga?.fotoUrl ?? null;
+
+      // 4. Montar histórico: DivulgaCand como fonte de verdade para anos/cargos
+      //    Cruzar com banco local para obter votos reais
+      let historicoItems: Array<{
+        year: number; cargo: string; uf: string; municipality: string;
+        party: string; votes: number; percentage: number; situation: string;
+        elected: boolean; receipt: number; expense: number; costPerVote: number;
+        sequencial: string; photoUrl: string | null;
+      }> = [];
+
+      if (divulga?.eleicoesAnteriores?.length) {
+        // Usar eleicoesAnteriores do DivulgaCand como base do histórico
+        const seenYearCargo = new Set<string>();
+        for (const e of divulga.eleicoesAnteriores) {
+          const yr = Number(e.nrAno);
+          const cargoNorm = (e.cargo ?? "").toUpperCase().trim();
+          const key = `${yr}-${cargoNorm}`;
+          if (seenYearCargo.has(key)) continue;
+          seenYearCargo.add(key);
+
+          const local = localByYearCargo[key];
+          historicoItems.push({
+            year: yr,
+            cargo: cargoNorm || e.cargo,
+            uf: local?.uf ?? e.sgUe ?? uf,
+            municipality: local?.nomeMunicipio ?? e.local ?? "",
+            party: local?.partidoSigla ?? e.partido ?? "",
+            votes: local ? Number(local.totalVotos) : 0,
+            percentage: local ? Number(local.percentualSobreValidos) : 0,
+            situation: local?.situacao ?? e.situacaoTotalizacao ?? "",
+            elected: local ? Boolean(local.eleito) : (
+              e.situacaoTotalizacao?.toUpperCase().includes("ELEITO") === true &&
+              !e.situacaoTotalizacao?.toUpperCase().includes("NÃO ELEITO") &&
+              !e.situacaoTotalizacao?.toUpperCase().includes("NAO ELEITO")
+            ),
+            receipt: local ? Number(local.receitaTotal ?? 0) : 0,
+            expense: local ? Number(local.despesaTotal ?? 0) : 0,
+            costPerVote: local && local.totalVotos > 0
+              ? Math.round((Number(local.despesaTotal ?? 0) / Number(local.totalVotos)) * 100) / 100
+              : 0,
+            sequencial: local?.candidatoSequencial ?? e.id ?? input.sequencial,
+            photoUrl: fotoUrl, // foto da eleição mais recente (melhor qualidade)
+          });
+        }
+        historicoItems.sort((a, b) => a.year - b.year);
+      } else {
+        // Fallback: usar apenas o banco local se DivulgaCand não responder
+        historicoItems = Object.values(localByYearCargo)
+          .sort((a, b) => a.ano - b.ano)
+          .map(r => ({
+            year: Number(r.ano),
+            cargo: r.cargo,
+            uf: r.uf,
+            municipality: r.nomeMunicipio ?? "",
+            party: r.partidoSigla,
+            votes: Number(r.totalVotos),
+            percentage: Number(r.percentualSobreValidos),
+            situation: r.situacao,
+            elected: Boolean(r.eleito),
+            receipt: Number(r.receitaTotal ?? 0),
+            expense: Number(r.despesaTotal ?? 0),
+            costPerVote: r.totalVotos > 0
+              ? Math.round((Number(r.despesaTotal ?? 0) / Number(r.totalVotos)) * 100) / 100
+              : 0,
+            sequencial: r.candidatoSequencial,
+            photoUrl: getPhotoUrl(r.candidatoSequencial, r.uf, Number(r.ano), r.cargo),
+          }));
+      }
+
+      setCached(cacheKey, historicoItems, 86400); // cache 24h (DivulgaCand pode mudar)
+      return historicoItems;
     }),
 
   // ─── VOTAÇÃO POR ZONA ELEITORAL ───────────────────────────────────────────────

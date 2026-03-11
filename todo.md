@@ -165,3 +165,10 @@
 - [x] Fotos dos políticos não carregam — corrigido: código de eleição 2040602022 (não 204062022)
 - [x] Cards de cargo (Governadores, Senadores, Dep. Federais etc.) travam ao clicar — corrigido: alias cr. no ORDER BY
 - [x] Histórico eleitoral incompleto — corrigido: UNION CPF+nome COLLATE + tabela candidates DivulgaCand (4 eleições para Lídice)
+
+## Bugs Corrigidos (Mar/2026 — sessão 3: DivulgaCand)
+- [x] Fotos reais dos políticos — integração com API DivulgaCand (fotoUrl real, não URL estática)
+- [x] Histórico eleitoral completo — DivulgaCand eleicoesAnteriores (7 eleições para Lídice: 2004, 2006, 2008, 2010, 2014, 2018, 2022)
+- [x] Criar server/divulgacand.ts copiado do Mapa de Votação (getCandidateProfile)
+- [x] getPoliticianHistory reescrito para usar DivulgaCand como fonte primária + banco local para votos
+- [x] getPoliticianProfile atualizado para buscar foto real do DivulgaCand
