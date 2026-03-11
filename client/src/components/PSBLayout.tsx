@@ -50,8 +50,8 @@ export default function PSBLayout({ children, breadcrumbs = [], title }: PSBLayo
             <span className="text-white font-bold text-lg">40</span>
           </div>
           <div className="min-w-0">
-            <p className="text-sidebar-foreground font-semibold text-sm leading-tight truncate">Hub PSB</p>
-            <p className="text-sidebar-foreground/50 text-xs truncate">Módulo 2 — Análise Eleitoral</p>
+            <p className="text-sidebar-foreground font-semibold text-sm leading-tight truncate">Perfil PSB</p>
+            <p className="text-sidebar-foreground/50 text-xs truncate">Análise Eleitoral</p>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}

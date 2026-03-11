@@ -1,4 +1,4 @@
-# Hub PSB Módulo 2 — TODO
+# Perfil PSB — TODO
 
 ## Setup e Estrutura
 - [x] Configurar tema visual (cores PSB: vermelho/laranja, fundo escuro)
@@ -62,7 +62,7 @@
 - [ ] Fotos dos políticos (via TSE ou upload manual)
 - [ ] Dados IBGE API em tempo real
 - [ ] Dados de diretórios estaduais atualizados via scraping do psb40.org.br
-- [ ] Integração com Hub PSB (login unificado)
+- [ ] Integração com outros módulos PSB (login unificado)
 
 ## Correções e Melhorias (Feedback v2)
 
@@ -147,11 +147,11 @@
 - [ ] Badges visuais em todas as listagens (CargoPage, EstadoPage, MunicipioPage, PoliticoPage)
 
 ## Integração com banco do Mapa de Votação
-- [x] Conectar Hub PSB ao banco compartilhado do Mapa de Votação (SHARED_ELECTORAL_DB_URL)
+- [x] Conectar Perfil PSB ao banco compartilhado do Mapa de Votação (SHARED_ELECTORAL_DB_URL)
 - [x] Investigar dados de filiação no banco compartilhado (CPF, anos extras, tabela candidates)
 - [x] Implementar detecção automática de troca de partido via cruzamento CPF entre eleições
 - [x] Painel admin com busca de políticos integrada ao banco compartilhado
-- [x] Sistema de overrides compartilhado entre Hub PSB e Mapa de Votação (tabela no banco compartilhado)
+- [x] Sistema de overrides compartilhado entre Perfil PSB e Mapa de Votação (tabela no banco compartilhado)
 - [x] Criar helper `server/affiliationOverrides.ts` para CRUD no banco compartilhado
 - [x] Atualizar admin.ts para usar o helper (sem mais dependência do Drizzle para filiação)
 - [x] Migrar 6 overrides iniciais para o banco compartilhado

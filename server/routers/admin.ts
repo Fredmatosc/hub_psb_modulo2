@@ -133,7 +133,7 @@ export const adminRouter = router({
 
   // ─── FILIAÇÃO PARTIDÁRIA ───────────────────────────────────────────────────────
   // Todos os endpoints de filiação usam o banco compartilhado (SHARED_ELECTORAL_DB_URL)
-  // para que Hub PSB e Mapa de Votação compartilhem os mesmos dados de filiação.
+  // para que Perfil PSB e Mapa de Votação compartilhem os mesmos dados de filiação.
 
   // Listar todos os overrides de filiação
   listAffiliationOverrides: publicProcedure

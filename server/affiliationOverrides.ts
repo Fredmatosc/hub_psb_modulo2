@@ -1,6 +1,6 @@
 /**
  * Helper para gerenciar overrides de filiação partidária no banco compartilhado.
- * Usa queryTidb (banco SHARED_ELECTORAL_DB_URL) para que tanto o Hub PSB
+ * Usa queryTidb (banco SHARED_ELECTORAL_DB_URL) para que tanto o Perfil PSB
  * quanto o Mapa de Votação compartilhem os mesmos dados de filiação.
  */
 import { queryTidb, getTidbPool } from "./tidb";

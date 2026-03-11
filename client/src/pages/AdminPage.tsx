@@ -439,7 +439,7 @@ export default function AdminPage() {
             <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
               Painel Administrativo
             </h1>
-            <p className="text-xs text-muted-foreground">Gestão de dados do Hub PSB</p>
+            <p className="text-xs text-muted-foreground">Gestão de dados do Perfil PSB</p>
           </div>
         </div>
 
