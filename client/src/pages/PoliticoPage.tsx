@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import PSBLayout from "@/components/PSBLayout";
@@ -15,7 +16,58 @@ type ProfileData = {
   uf: string; stateName: string; cargo: string; municipality: string;
   votes: number; percentage: number; situation: string; elected: boolean;
   receipt: number; expense: number; costPerVote: number; cpf: string;
+  year?: number; ano?: number; codigoEleicao?: string;
 };
+
+// Mapa de codigoEleicao por ano e tipo de cargo
+const ELECTION_CODE_MAP: Record<string, string> = {
+  "2024_prefeito": "619",
+  "2024_vereador": "619",
+  "2022_deputado federal": "20406",
+  "2022_deputado estadual": "20406",
+  "2022_senador": "20406",
+  "2022_governador": "20406",
+  "2020_prefeito": "426",
+  "2020_vereador": "426",
+  "2018_deputado federal": "20406",
+  "2018_deputado estadual": "20406",
+  "2018_senador": "20406",
+  "2018_governador": "20406",
+  "2016_prefeito": "619",
+  "2016_vereador": "619",
+  "2014_deputado federal": "20406",
+  "2014_deputado estadual": "20406",
+  "2014_senador": "20406",
+  "2014_governador": "20406",
+};
+
+function getPhotoUrl(sequencial: string, uf: string, year: number, cargo: string): string {
+  const key = `${year}_${cargo.toLowerCase()}`;
+  const code = ELECTION_CODE_MAP[key] ?? "20406";
+  return `https://divulgacandcontas.tse.jus.br/divulga/rest/arquivo/img/${code}${year}/${sequencial}/${uf.toUpperCase()}`;
+}
+
+function PhotoAvatar({ sequencial, uf, name, cargo, year }: {
+  sequencial: string; uf: string; name: string; cargo: string; year: number;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const photoUrl = getPhotoUrl(sequencial, uf, year, cargo);
+  if (hasError) {
+    return (
+      <div className="w-16 h-16 rounded-xl psb-gradient flex items-center justify-center flex-shrink-0">
+        <User size={28} className="text-white" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={photoUrl}
+      alt={name}
+      className="w-16 h-16 rounded-xl object-cover border border-border flex-shrink-0"
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 type HistoryItem = {
   year: number; cargo: string; uf: string; municipality: string; party: string;
@@ -46,19 +98,19 @@ function StatCard({ label, value, sub, icon: Icon, highlight }: {
 }
 
 const PARTY_COLORS: Record<string, string> = {
-  PSB: "oklch(0.55 0.22 27)",
-  PT: "oklch(0.50 0.20 27)",
-  PL: "oklch(0.50 0.18 260)",
-  MDB: "oklch(0.50 0.18 200)",
-  PP: "oklch(0.50 0.18 130)",
-  PSD: "oklch(0.50 0.18 300)",
-  PSDB: "oklch(0.50 0.18 220)",
-  PDT: "oklch(0.50 0.18 60)",
-  UNIÃO: "oklch(0.50 0.18 45)",
+  PSB: "#dc2626",
+  PT: "#b91c1c",
+  PL: "#1d4ed8",
+  MDB: "#0891b2",
+  PP: "#16a34a",
+  PSD: "#7c3aed",
+  PSDB: "#1e40af",
+  PDT: "#d97706",
+  UNIÃO: "#ea580c",
 };
 
 function getPartyColor(party: string): string {
-  return PARTY_COLORS[party] ?? "oklch(0.45 0.05 260)";
+  return PARTY_COLORS[party] ?? "#64748b";
 }
 
 export default function PoliticoPage() {
@@ -69,6 +121,7 @@ export default function PoliticoPage() {
   const { data: historyRaw, isLoading: loadingHistory } = trpc.psb.getPoliticianHistory.useQuery({ sequencial });
   const { data: zonesRaw, isLoading: loadingZones } = trpc.psb.getPoliticianZones.useQuery({ sequencial, limit: 15 });
   const { data: competitorsRaw } = trpc.psb.getPoliticianCompetitors.useQuery({ sequencial });
+  const { data: affiliationOverride } = trpc.psb.getAffiliationOverride.useQuery({ sequencial });
 
   const profile = profileRaw as ProfileData | undefined;
   const history = (historyRaw as HistoryItem[] | undefined) ?? [];
@@ -109,9 +162,9 @@ export default function PoliticoPage() {
   }));
 
   const PIE_COLORS = [
-    "oklch(0.60 0.22 27)", "oklch(0.65 0.18 45)", "oklch(0.55 0.18 200)",
-    "oklch(0.65 0.18 130)", "oklch(0.55 0.18 300)", "oklch(0.60 0.18 60)",
-    "oklch(0.55 0.18 240)", "oklch(0.60 0.18 170)",
+    "#dc2626", "#ea580c", "#2563eb",
+    "#16a34a", "#7c3aed", "#d97706",
+    "#0891b2", "#be185d",
   ];
 
   if (loadingProfile) {
@@ -142,10 +195,8 @@ export default function PoliticoPage() {
         {/* Perfil Header */}
         <div className="bg-card border border-border rounded-xl p-5">
           <div className="flex items-start gap-4">
-            {/* Avatar */}
-            <div className="w-16 h-16 rounded-xl psb-gradient flex items-center justify-center flex-shrink-0">
-              <User size={28} className="text-white" />
-            </div>
+            {/* Avatar / Foto */}
+            <PhotoAvatar sequencial={sequencial} uf={uf} name={profile.nameUrna || profile.name} cargo={profile.cargo} year={profile.ano ?? profile.year ?? 2022} />
 
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -157,8 +208,8 @@ export default function PoliticoPage() {
                 </div>
                 <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0
                   ${profile.elected
-                    ? "bg-green-500/15 text-green-400 border border-green-500/30"
-                    : "bg-red-500/15 text-red-400 border border-red-500/30"
+                    ? "bg-green-100 text-green-700 border border-green-300"
+                    : "bg-red-100 text-red-700 border border-red-300"
                   }`}>
                   {profile.elected
                     ? <><CheckCircle size={12} /> Eleito</>
@@ -182,6 +233,23 @@ export default function PoliticoPage() {
                   <div className="w-3 h-3 rounded-full" style={{ background: getPartyColor(profile.party) }} />
                   <span className="text-muted-foreground">{profile.party}</span>
                 </div>
+                {/* Badge de mudança de filiação */}
+                {affiliationOverride && affiliationOverride.status === 'left_psb' && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-300">
+                    <span>⚠️ Saiu do PSB</span>
+                    {affiliationOverride.currentParty && (
+                      <span>→ {affiliationOverride.currentParty}</span>
+                    )}
+                  </div>
+                )}
+                {affiliationOverride && affiliationOverride.status === 'joined_psb' && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
+                    <span>✅ Entrou no PSB</span>
+                    {affiliationOverride.originalParty && (
+                      <span className="text-green-600">(era {affiliationOverride.originalParty})</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -228,16 +296,16 @@ export default function PoliticoPage() {
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={votesChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.01 260)" />
-                    <XAxis dataKey="year" tick={{ fill: "oklch(0.60 0.01 260)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "oklch(0.60 0.01 260)", fontSize: 10 }} axisLine={false} tickLine={false}
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="year" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false}
                       tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v.toString()} />
                     <Tooltip
                       contentStyle={{
-                        background: "oklch(0.16 0.015 260)",
-                        border: "1px solid oklch(0.25 0.015 260)",
+                        background: "#ffffff",
+                        border: "1px solid #e2e8f0",
                         borderRadius: "8px",
-                        color: "oklch(0.95 0.01 260)",
+                        color: "#1e293b",
                         fontSize: "12px",
                       }}
                       formatter={(v: unknown) => [(v as number).toLocaleString("pt-BR"), "Votos"]}
@@ -250,7 +318,7 @@ export default function PoliticoPage() {
                       {votesChartData.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={entry.Eleito ? "oklch(0.55 0.22 27)" : "oklch(0.35 0.08 27)"}
+                          fill={entry.Eleito ? "#dc2626" : "#fca5a5"}
                         />
                       ))}
                     </Bar>
@@ -279,16 +347,16 @@ export default function PoliticoPage() {
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={financeChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.01 260)" />
-                    <XAxis dataKey="year" tick={{ fill: "oklch(0.60 0.01 260)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "oklch(0.60 0.01 260)", fontSize: 10 }} axisLine={false} tickLine={false}
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="year" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false}
                       tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}K`} />
                     <Tooltip
                       contentStyle={{
-                        background: "oklch(0.16 0.015 260)",
-                        border: "1px solid oklch(0.25 0.015 260)",
+                        background: "#ffffff",
+                        border: "1px solid #e2e8f0",
                         borderRadius: "8px",
-                        color: "oklch(0.95 0.01 260)",
+                        color: "#1e293b",
                         fontSize: "12px",
                       }}
                       formatter={(v: unknown, name: string) => [
@@ -296,9 +364,9 @@ export default function PoliticoPage() {
                         name,
                       ]}
                     />
-                    <Legend wrapperStyle={{ fontSize: "11px", color: "oklch(0.60 0.01 260)" }} />
-                    <Bar dataKey="Receita" fill="oklch(0.55 0.18 200)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Despesa" fill="oklch(0.55 0.22 27)" radius={[4, 4, 0, 0]} />
+                    <Legend wrapperStyle={{ fontSize: "11px", color: "#64748b" }} />
+                    <Bar dataKey="Receita" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Despesa" fill="#dc2626" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -329,10 +397,10 @@ export default function PoliticoPage() {
                         </Pie>
                         <Tooltip
                           contentStyle={{
-                            background: "oklch(0.16 0.015 260)",
-                            border: "1px solid oklch(0.25 0.015 260)",
+                            background: "#ffffff",
+                            border: "1px solid #e2e8f0",
                             borderRadius: "8px",
-                            color: "oklch(0.95 0.01 260)",
+                            color: "#1e293b",
                             fontSize: "11px",
                           }}
                           formatter={(v: unknown, _n: string, props: { payload?: { pct?: string } }) => [

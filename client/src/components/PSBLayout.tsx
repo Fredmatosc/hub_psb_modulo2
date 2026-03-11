@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { ChevronRight, Home, Map, BarChart2, Users, LogOut, Menu, X } from "lucide-react";
+import { ChevronRight, Home, Map, Users, LogOut, Menu, X, Shield } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -67,17 +67,19 @@ export default function PSBLayout({ children, breadcrumbs = [], title }: PSBLayo
             const Icon = item.icon;
             const active = location === item.href;
             return (
-              <Link key={item.href} href={item.href}>
-                <a className={`
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                   ${active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   }
-                `}>
-                  <Icon size={17} />
-                  {item.label}
-                </a>
+                `}
+              >
+                <Icon size={17} />
+                {item.label}
               </Link>
             );
           })}
@@ -101,21 +103,36 @@ export default function PSBLayout({ children, breadcrumbs = [], title }: PSBLayo
         {/* User */}
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-sidebar-border">
           {user ? (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                <Users size={14} className="text-primary" />
+            <div className="flex flex-col gap-2">
+              {user.role === "admin" && (
+                <Link
+                  href="/admin"
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    location === "/admin"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  }`}
+                >
+                  <Shield size={13} />
+                  Painel Admin
+                </Link>
+              )}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Users size={14} className="text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sidebar-foreground text-xs font-medium truncate">{user.name ?? "Usuário"}</p>
+                  <p className="text-sidebar-foreground/50 text-xs truncate">{user.email ?? ""}</p>
+                </div>
+                <button
+                  onClick={() => logout.mutate()}
+                  className="text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors"
+                  title="Sair"
+                >
+                  <LogOut size={14} />
+                </button>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sidebar-foreground text-xs font-medium truncate">{user.name ?? "Usuário"}</p>
-                <p className="text-sidebar-foreground/50 text-xs truncate">{user.email ?? ""}</p>
-              </div>
-              <button
-                onClick={() => logout.mutate()}
-                className="text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors"
-                title="Sair"
-              >
-                <LogOut size={14} />
-              </button>
             </div>
           ) : (
             <a
@@ -142,20 +159,22 @@ export default function PSBLayout({ children, breadcrumbs = [], title }: PSBLayo
 
           {/* Breadcrumbs */}
           <nav className="flex items-center gap-1 text-sm min-w-0 flex-1">
-            <Link href="/">
-              <a className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                <Home size={13} />
-                <span className="hidden sm:inline">Brasil</span>
-              </a>
+            <Link
+              href="/"
+              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            >
+              <Home size={13} />
+              <span className="hidden sm:inline">Brasil</span>
             </Link>
             {breadcrumbs.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1 min-w-0">
                 <ChevronRight size={13} className="text-muted-foreground/50 flex-shrink-0" />
                 {crumb.href ? (
-                  <Link href={crumb.href}>
-                    <a className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px] sm:max-w-[200px]">
-                      {crumb.label}
-                    </a>
+                  <Link
+                    href={crumb.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px] sm:max-w-[200px]"
+                  >
+                    {crumb.label}
                   </Link>
                 ) : (
                   <span className="text-foreground font-medium truncate max-w-[120px] sm:max-w-[200px]">

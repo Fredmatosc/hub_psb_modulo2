@@ -1,0 +1,13 @@
+{
+  "query": "SHOW TABLES LIKE 'politician_affiliation_overrides';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2CrXQx4C86zrDpC.ce4fcbfc6701 --database fLifwRuGWeM9kwv26nFo5c --execute SHOW TABLES LIKE 'politician_affiliation_overrides';",
+  "rows": [
+    {
+      "Tables_in_fLifwRuGWeM9kwv26nFo5c (politician_affiliation_overrides)": "politician_affiliation_overrides"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_fLifwRuGWeM9kwv26nFo5c (politician_affiliation_overrides)\npolitician_affiliation_overrides\n",
+  "stderr": "",
+  "execution_time_ms": 66
+}

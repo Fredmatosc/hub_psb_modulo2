@@ -1,0 +1,86 @@
+{
+  "query": "\nSELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'psb_state_directories' \nORDER BY ORDINAL_POSITION;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2CrXQx4C86zrDpC.ce4fcbfc6701 --database fLifwRuGWeM9kwv26nFo5c --execute \nSELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'psb_state_directories' \nORDER BY ORDINAL_POSITION;\n",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "uf",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "state_name",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "president_name",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "president_sequencial",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "address",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "city",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "cep",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "phone1",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "phone2",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "email",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "website",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "facebook",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "instagram",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "twitter",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "youtube",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "notes",
+      "DATA_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "last_updated",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "created_at",
+      "DATA_TYPE": "timestamp"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tDATA_TYPE\nid\tint\nuf\tvarchar\nstate_name\tvarchar\npresident_name\tvarchar\npresident_sequencial\tvarchar\naddress\tvarchar\ncity\tvarchar\ncep\tvarchar\nphone1\tvarchar\nphone2\tvarchar\nemail\tvarchar\nwebsite\tvarchar\nfacebook\tvarchar\ninstagram\tvarchar\ntwitter\tvarchar\nyoutube\tvarchar\nnotes\ttext\nlast_updated\ttimestamp\ncreated_at\ttimestamp\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

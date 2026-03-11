@@ -75,7 +75,7 @@ export default function EstadoPage() {
 
   type QuadroData = { uf: string; name: string; mayors: number; councilors: number; federalDeputies: number; stateDeputies: number; senators: number; governors: number };
   type DemoData = { uf: string; name: string; population: number; voters: number; turnout: number; abstention: number };
-  type DirectoryData = { uf: string; name: string; president: string; address: string; phone: string; email: string; instagram?: string; facebook?: string; website?: string };
+  type DirectoryData = { uf: string; name: string; president: string; address: string; phone: string; email: string; instagram?: string; facebook?: string; website?: string; presidentSequencial?: string | null; presidentPhotoUrl?: string | null };
   type HistoryItem = { year: number; mayors: number; councilors: number; federalDeputies: number; stateDeputies: number; total: number };
   type ElectedData = { items: ElectedItem[]; total: number; page: number; pageSize: number };
 
@@ -188,10 +188,27 @@ export default function EstadoPage() {
                 </h2>
                 <div className="space-y-2.5">
                   <div className="flex items-start gap-2">
-                    <Users size={14} className="text-primary mt-0.5 flex-shrink-0" />
+                    {dir?.presidentPhotoUrl && (
+                      <img
+                        src={dir.presidentPhotoUrl}
+                        alt={dir.president}
+                        className="w-10 h-10 rounded-full object-cover border border-border flex-shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    {!dir?.presidentPhotoUrl && <Users size={14} className="text-primary mt-0.5 flex-shrink-0" />}
                     <div>
                       <p className="text-xs text-muted-foreground">Presidente Estadual</p>
-                      <p className="text-sm font-medium text-foreground">{dir?.president ?? "Informação não disponível"}</p>
+                      {dir?.presidentSequencial ? (
+                        <button
+                          onClick={() => navigate(`/politico/${dir.presidentSequencial}`)}
+                          className="text-sm font-medium text-primary hover:underline text-left"
+                        >
+                          {dir?.president ?? "Informação não disponível"}
+                        </button>
+                      ) : (
+                        <p className="text-sm font-medium text-foreground">{dir?.president ?? "Informação não disponível"}</p>
+                      )}
                     </div>
                   </div>
                   {dir?.address && (
@@ -413,23 +430,23 @@ export default function EstadoPage() {
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={histChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.01 260)" />
-                          <XAxis dataKey="year" tick={{ fill: "oklch(0.60 0.01 260)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fill: "oklch(0.60 0.01 260)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="year" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
                           <Tooltip
                             contentStyle={{
-                              background: "oklch(0.16 0.015 260)",
-                              border: "1px solid oklch(0.25 0.015 260)",
+                              background: "#ffffff",
+                              border: "1px solid #e2e8f0",
                               borderRadius: "8px",
-                              color: "oklch(0.95 0.01 260)",
+                              color: "#1e293b",
                               fontSize: "12px",
                             }}
                           />
-                          <Legend wrapperStyle={{ fontSize: "11px", color: "oklch(0.60 0.01 260)" }} />
-                          <Line type="monotone" dataKey="Prefeitos" stroke="oklch(0.60 0.22 27)" strokeWidth={2} dot={{ r: 3 }} />
-                          <Line type="monotone" dataKey="Vereadores" stroke="oklch(0.65 0.18 45)" strokeWidth={2} dot={{ r: 3 }} />
-                          <Line type="monotone" dataKey="Dep. Federais" stroke="oklch(0.55 0.18 200)" strokeWidth={2} dot={{ r: 3 }} />
-                          <Line type="monotone" dataKey="Dep. Estaduais" stroke="oklch(0.65 0.18 130)" strokeWidth={2} dot={{ r: 3 }} />
+                          <Legend wrapperStyle={{ fontSize: "11px", color: "#64748b" }} />
+                          <Line type="monotone" dataKey="Prefeitos" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="Vereadores" stroke="#ea580c" strokeWidth={2} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="Dep. Federais" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="Dep. Estaduais" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>

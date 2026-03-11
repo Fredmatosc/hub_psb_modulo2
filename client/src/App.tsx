@@ -6,14 +6,20 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import BrasilPage from "./pages/BrasilPage";
 import EstadoPage from "./pages/EstadoPage";
+import MunicipioPage from "./pages/MunicipioPage";
+import CargoPage from "./pages/CargoPage";
 import PoliticoPage from "./pages/PoliticoPage";
+import AdminPage from "./pages/AdminPage";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={BrasilPage} />
+      <Route path="/cargo/:cargo" component={CargoPage} />
       <Route path="/estado/:uf" component={EstadoPage} />
+      <Route path="/estado/:uf/municipio/:codigoMunicipio" component={MunicipioPage} />
       <Route path="/politico/:sequencial" component={PoliticoPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -28,7 +34,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Router />

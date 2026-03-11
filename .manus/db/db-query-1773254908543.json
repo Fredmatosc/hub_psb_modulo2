@@ -1,0 +1,9 @@
+{
+  "query": "TRUNCATE TABLE psb_state_directories;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2CrXQx4C86zrDpC.ce4fcbfc6701 --database fLifwRuGWeM9kwv26nFo5c --execute TRUNCATE TABLE psb_state_directories;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 337
+}

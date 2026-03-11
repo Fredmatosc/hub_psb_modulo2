@@ -63,3 +63,61 @@
 - [ ] Dados IBGE API em tempo real
 - [ ] Dados de diretórios estaduais atualizados via scraping do psb40.org.br
 - [ ] Integração com Hub PSB (login unificado)
+
+## Correções e Melhorias (Feedback v2)
+
+- [x] Tema: mudar para fundo branco (light mode)
+- [x] Mapa do Brasil: substituir SVG simples por mapa mais visual/detalhado (GeoJSON + D3)
+- [x] Ranking e KPIs: incluir todos os cargos (governadores, senadores, dep. federais, dep. estaduais)
+- [x] Páginas por cargo: criar página /cargo/:cargo com lista nacional e análise proporcional (votos/eleitores)
+- [x] Diretório estadual: corrigir exibição do nome do presidente estadual
+- [x] Dados demográficos: corrigir exibição de população e número de eleitores por estado (IBGE API corrigida)
+- [x] Histórico eleitoral do político: corrigir duplicatas (mostrar apenas 1 resultado por eleição/turno)
+- [x] Histórico eleitoral: incluir todos os cargos (busca por CPF para pegar todas as eleições)
+- [x] Nível 4 (Município): criar página /estado/:uf/municipio/:codigo com vereadores, diretório municipal
+- [x] Fotos dos candidatos: integrar via URL do TSE/DivulgaCand (padrão: codigoEleicao+ano+sequencial+uf)
+- [x] Navegação: adicionar link de município clicável na página do estado (ex: Pernambuco > Recife)
+- [x] Presidente do diretório estadual: tornar nome clicável quando encontrado no banco de dados
+- [x] Buscar sequencial do presidente no banco por nome para linkar ao perfil individual
+
+## Sistema de Filiação Partidária Atual
+- [ ] Criar tabela `party_affiliation_override` no banco para armazenar status manual de filiação
+- [ ] Criar endpoint tRPC `getAffiliationStatus` para retornar badge de filiação atual
+- [ ] Implementar badges visuais: "Eleito pelo PSB ✅" / "Migrou para [PARTIDO] ⚠️" / "Veio de [PARTIDO] → PSB 🔄"
+- [ ] Exibir badge de filiação em todos os cards de políticos (estado, cargo, perfil)
+- [ ] Criar interface admin para atualizar manualmente o status de filiação
+- [ ] Aplicar mesma lógica no mapa_votacao_psb (coordenar com outra tarefa)
+- [ ] Documentar casos conhecidos: Carlos Brandão (PSB→outro), Aava Santiago (outro→PSB)
+- [ ] Investigar download automático do CSV de filiação do TSE (atualização semanal)
+
+## Diretórios Municipais PSB (SGIP3/TSE)
+- [ ] Coletar dados de todos os diretórios municipais do PSB via SGIP3/TSE
+- [ ] Armazenar dados dos diretórios municipais no banco de dados
+- [ ] Exibir informações do diretório municipal na página MunicipioPage
+- [ ] Tornar nome do presidente municipal clicável quando encontrado no banco de candidatos
+
+## Painel Administrativo de Atualização Manual
+- [ ] Criar tabela `psb_state_directories` no banco para armazenar diretórios estaduais
+- [ ] Criar tabela `psb_municipal_directories` no banco para armazenar diretórios municipais
+- [ ] Criar tabela `politician_affiliation_overrides` para registrar mudanças de filiação
+- [ ] Criar tabela `data_sync_log` para registrar histórico de sincronizações
+- [ ] Criar página /admin com painel de controle de dados
+- [ ] Botão "Atualizar Diretórios Estaduais" — consulta SGIP3/TSE (fonte oficial) [PENDENTE: API bloqueada, resolver depois]
+- [ ] Botão "Atualizar Diretórios Municipais" — consulta SGIP3/TSE [PENDENTE: API bloqueada, resolver depois]
+- [ ] Botão "Verificar Filiação Partidária" — consulta TSE/dados abertos
+- [ ] Exibir log de última atualização e status de cada fonte
+- [ ] Formulário para edição manual de dados de diretório (estadual e municipal)
+- [ ] Formulário para registrar manualmente mudança de filiação de um político
+- [ ] Badge visual nos perfis: "Eleito pelo PSB ✅" / "Migrou para [PARTIDO] ⚠️" / "Veio de [PARTIDO] → PSB 🔄"
+- [ ] Proteger painel admin com verificação de role (apenas admin)
+
+## Opção 1 — Melhorias Implementadas (Mar/2026)
+- [x] Popular tabela psb_state_directories com 27 diretórios estaduais reais
+- [x] Corrigir schema do Drizzle para mapear colunas snake_case do banco
+- [x] Corrigir endpoint getStateDemographics (descompressão gzip IBGE)
+- [x] Criar sistema de filiação partidária (tabela politician_affiliation_overrides)
+- [x] Adicionar badge visual de filiação na PoliticoPage
+- [x] Criar router admin com endpoints de gestão (CRUD diretórios + filiações)
+- [x] Criar página AdminPage (/admin) com gestão de diretórios estaduais e filiações
+- [x] Adicionar link "Painel Admin" no sidebar para usuários com role=admin
+- [x] Registrar rota /admin no App.tsx

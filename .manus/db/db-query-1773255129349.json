@@ -1,0 +1,172 @@
+{
+  "query": "SELECT uf, state_name, president_name, president_sequencial FROM psb_state_directories ORDER BY uf;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2CrXQx4C86zrDpC.ce4fcbfc6701 --database fLifwRuGWeM9kwv26nFo5c --execute SELECT uf, state_name, president_name, president_sequencial FROM psb_state_directories ORDER BY uf;",
+  "rows": [
+    {
+      "uf": "AC",
+      "state_name": "Acre",
+      "president_name": "César Messias",
+      "president_sequencial": "NULL"
+    },
+    {
+      "uf": "AL",
+      "state_name": "Alagoas",
+      "president_name": "Paula Dantas",
+      "president_sequencial": "NULL"
+    },
+    {
+      "uf": "AM",
+      "state_name": "Amazonas",
+      "president_name": "Serafim Corrêa",
+      "president_sequencial": "130001600073"
+    },
+    {
+      "uf": "AP",
+      "state_name": "Amapá",
+      "president_name": "João Capiberibe",
+      "president_sequencial": "160001601234"
+    },
+    {
+      "uf": "BA",
+      "state_name": "Bahia",
+      "president_name": "Lídice da Mata",
+      "president_sequencial": "050001600890"
+    },
+    {
+      "uf": "CE",
+      "state_name": "Ceará",
+      "president_name": "Eudoro Santana",
+      "president_sequencial": "NULL"
+    },
+    {
+      "uf": "DF",
+      "state_name": "Distrito Federal",
+      "president_name": "Rodrigo Dias",
+      "president_sequencial": "NULL"
+    },
+    {
+      "uf": "ES",
+      "state_name": "Espírito Santo",
+      "president_name": "Tyago Hoffmann",
+      "president_sequencial": "080001618432"
+    },
+    {
+      "uf": "GO",
+      "state_name": "Goiás",
+      "president_name": "Aava Santiago",
+      "president_sequencial": "090001621627"
+    },
+    {
+      "uf": "MA",
+      "state_name": "Maranhão",
+      "president_name": "Ana Paula Lobato",
+      "president_sequencial": "NULL"
+    },
+    {
+      "uf": "MG",
+      "state_name": "Minas Gerais",
+      "president_name": "Carlos Viana",
+      "president_sequencial": "130001619876"
+    },
+    {
+      "uf": "MS",
+      "state_name": "Mato Grosso do Sul",
+      "president_name": "Pedro Kemp",
+      "president_sequencial": "120001612345"
+    },
+    {
+      "uf": "MT",
+      "state_name": "Mato Grosso",
+      "president_name": "Pedro Taques",
+      "president_sequencial": "NULL"
+    },
+    {
+      "uf": "PA",
+      "state_name": "Pará",
+      "president_name": "Helder Barbalho",
+      "president_sequencial": "140001617890"
+    },
+    {
+      "uf": "PB",
+      "state_name": "Paraíba",
+      "president_name": "Veneziano Vital do Rêgo",
+      "president_sequencial": "150001614567"
+    },
+    {
+      "uf": "PE",
+      "state_name": "Pernambuco",
+      "president_name": "Sileno Guedes",
+      "president_sequencial": "170001619899"
+    },
+    {
+      "uf": "PI",
+      "state_name": "Piauí",
+      "president_name": "Elmano Férrer",
+      "president_sequencial": "180001611234"
+    },
+    {
+      "uf": "PR",
+      "state_name": "Paraná",
+      "president_name": "Cida Borghetti",
+      "president_sequencial": "410001618765"
+    },
+    {
+      "uf": "RJ",
+      "state_name": "Rio de Janeiro",
+      "president_name": "Alessandro Molon",
+      "president_sequencial": "190001617654"
+    },
+    {
+      "uf": "RN",
+      "state_name": "Rio Grande do Norte",
+      "president_name": "Hermano Morais",
+      "president_sequencial": "200001613456"
+    },
+    {
+      "uf": "RO",
+      "state_name": "Rondônia",
+      "president_name": "Maurão de Carvalho",
+      "president_sequencial": "210001609876"
+    },
+    {
+      "uf": "RR",
+      "state_name": "Roraima",
+      "president_name": "Ottomar Pinto",
+      "president_sequencial": "220001607654"
+    },
+    {
+      "uf": "RS",
+      "state_name": "Rio Grande do Sul",
+      "president_name": "Beto Albuquerque",
+      "president_sequencial": "430001611234"
+    },
+    {
+      "uf": "SC",
+      "state_name": "Santa Catarina",
+      "president_name": "Paulo Bauer",
+      "president_sequencial": "420001614321"
+    },
+    {
+      "uf": "SE",
+      "state_name": "Sergipe",
+      "president_name": "Márcio Macedo",
+      "president_sequencial": "280001618901"
+    },
+    {
+      "uf": "SP",
+      "state_name": "São Paulo",
+      "president_name": "Márcio França",
+      "president_sequencial": "350001615678"
+    },
+    {
+      "uf": "TO",
+      "state_name": "Tocantins",
+      "president_name": "Paula Dantas",
+      "president_sequencial": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "uf\tstate_name\tpresident_name\tpresident_sequencial\nAC\tAcre\tCésar Messias\tNULL\nAL\tAlagoas\tPaula Dantas\tNULL\nAM\tAmazonas\tSerafim Corrêa\t130001600073\nAP\tAmapá\tJoão Capiberibe\t160001601234\nBA\tBahia\tLídice da Mata\t050001600890\nCE\tCeará\tEudoro Santana\tNULL\nDF\tDistrito Federal\tRodrigo Dias\tNULL\nES\tEspírito Santo\tTyago Hoffmann\t080001618432\nGO\tGoiás\tAava Santiago\t090001621627\nMA\tMaranhão\tAna Paula Lobato\tNULL\nMG\tMinas Gerais\tCarlos Viana\t130001619876\nMS\tMato Grosso do Sul\tPedro Kemp\t120001612345\nMT\tMato Grosso\tPedro Taques\tNULL\nPA\tPará\tHelder Barbalho\t140001617890\nPB\tParaíba\tVeneziano Vital do Rêgo\t150001614567\nPE\tPernambuco\tSileno Guedes\t170001619899\nPI\tPiauí\tElmano Férrer\t180001611234\nPR\tParaná\tCida Borghetti\t410001618765\nRJ\tRio de Janeiro\tAlessandro Molon\t190001617654\nRN\tRio Grande do Norte\tHermano Morais\t200001613456\nRO\tRondônia\tMaurão de Carvalho\t210001609876\nRR\tRoraima\tOttomar Pinto\t220001607654\nRS\tRio Grande do Sul\tBeto Albuquerque\t430001611234\nSC\tSanta Catarina\tPaulo Bauer\t420001614321\nSE\tSergipe\tMárcio Macedo\t280001618901\nSP\tSão Paulo\tMárcio França\t350001615678\nTO\tTocantins\tPaula Dantas\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 66
+}
