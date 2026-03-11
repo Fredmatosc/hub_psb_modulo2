@@ -155,3 +155,13 @@
 - [x] Criar helper `server/affiliationOverrides.ts` para CRUD no banco compartilhado
 - [x] Atualizar admin.ts para usar o helper (sem mais dependência do Drizzle para filiação)
 - [x] Migrar 6 overrides iniciais para o banco compartilhado
+
+## Bug: Histórico Eleitoral Incompleto (Mar/2026)
+- [x] Investigar por que o histórico da Lídice da Mata mostra apenas 2 eleições
+- [x] Corrigir query getPoliticianHistory para buscar histórico completo via CPF
+- [x] Verificar se o problema afeta outros políticos com longa trajetória
+
+## Bugs Reportados (Mar/2026 — sessão 2)
+- [x] Fotos dos políticos não carregam — corrigido: código de eleição 2040602022 (não 204062022)
+- [x] Cards de cargo (Governadores, Senadores, Dep. Federais etc.) travam ao clicar — corrigido: alias cr. no ORDER BY
+- [x] Histórico eleitoral incompleto — corrigido: UNION CPF+nome COLLATE + tabela candidates DivulgaCand (4 eleições para Lídice)

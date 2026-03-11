@@ -16,21 +16,25 @@ const STATE_NAMES: Record<string, string> = {
 };
 
 // Código de eleição TSE por ano/tipo para montar URL de foto
-// Padrão: https://divulgacandcontas.tse.jus.br/divulga/rest/arquivo/img/{codigoEleicao}{ano}/{sequencial}/{uf}
+// Formato correto: https://divulgacandcontas.tse.jus.br/divulga/rest/arquivo/img/{codigoCompleto}/{sequencial}/{uf}
+// O código completo já inclui o ano: ex. 2040602022 (geral 2022), 2040402024 (municipal 2024)
 const ELECTION_CODES: Record<number, Record<string, string>> = {
-  2022: { GERAL: "20406" },
-  2020: { MUNICIPAL: "20200" },
-  2024: { MUNICIPAL: "20240" },
-  2018: { GERAL: "20180" },
-  2016: { MUNICIPAL: "20160" },
-  2014: { GERAL: "20140" },
+  2022: { GERAL: "2040602022" },
+  2020: { MUNICIPAL: "2040402020" },
+  2024: { MUNICIPAL: "2040402024" },
+  2018: { GERAL: "2040602018" },
+  2016: { MUNICIPAL: "2040402016" },
+  2014: { GERAL: "2040602014" },
+  2012: { MUNICIPAL: "2040402012" },
+  2010: { GERAL: "2040602010" },
 };
 
 function getPhotoUrl(sequencial: string, uf: string, ano: number, cargo: string): string {
+  if (!sequencial) return "";
   const isMunicipal = ["PREFEITO", "VEREADOR"].includes(cargo);
   const type = isMunicipal ? "MUNICIPAL" : "GERAL";
-  const code = ELECTION_CODES[ano]?.[type] ?? "20406";
-  return `https://divulgacandcontas.tse.jus.br/divulga/rest/arquivo/img/${code}${ano}/${sequencial}/${uf}`;
+  const code = ELECTION_CODES[ano]?.[type] ?? ELECTION_CODES[ano]?.["GERAL"] ?? "2040602022";
+  return `https://divulgacandcontas.tse.jus.br/divulga/rest/arquivo/img/${code}/${sequencial}/${uf}`;
 }
 
 // ─── DIRETÓRIOS ESTADUAIS (dados reais do site psb40.org.br) ─────────────────
@@ -764,11 +768,13 @@ export const psbRouter = router({
       const cached = getCached<unknown>(cacheKey);
       if (cached) return cached;
 
+      // Para a query sem múnicipios não usa alias cr., para a com municípios usa
+      // Usamos nomes sem alias pois ambas as queries têm as mesmas colunas
       const orderClause = input.orderBy === "costPerVote"
-        ? "CASE WHEN cr.totalVotos > 0 THEN cr.despesaTotal/cr.totalVotos ELSE 0 END DESC"
+        ? "CASE WHEN totalVotos > 0 THEN despesaTotal/totalVotos ELSE 0 END DESC"
         : input.orderBy === "name"
-          ? "cr.candidatoNome ASC"
-          : "cr.totalVotos DESC";
+          ? "candidatoNome ASC"
+          : "totalVotos DESC";
 
       const needsMunicipio = ["PREFEITO", "VEREADOR"].includes(cargo);
       const params: unknown[] = [];
@@ -802,7 +808,8 @@ export const psbRouter = router({
       }
 
       if (input.uf) {
-        sql += ` AND cr.uf=?`;
+        // Para query sem múnicipios não tem alias cr., para a com múnicipios tem
+        sql += needsMunicipio ? ` AND cr.uf=?` : ` AND uf=?`;
         params.push(input.uf.toUpperCase());
       }
 
@@ -1015,7 +1022,7 @@ export const psbRouter = router({
   getPoliticianHistory: publicProcedure
     .input(z.object({ sequencial: z.string() }))
     .query(async ({ input }) => {
-      const cacheKey = `psb:politician:history:v2:${input.sequencial}`;
+      const cacheKey = `psb:politician:history:v3:${input.sequencial}`;
       const cached = getCached<unknown>(cacheKey);
       if (cached) return cached;
 
@@ -1027,7 +1034,7 @@ export const psbRouter = router({
       if (!nameRows.length) return [];
       const { candidatoNome, cpf, uf } = nameRows[0];
 
-      // Busca histórico - apenas turno 1 (ou turno 2 se foi eleito no 2º turno e não no 1º)
+      // Busca histórico - usa UNION de CPF + nome COLLATE para cobrir anos sem CPF (ex: 2018)
       // Agrupa por ano+cargo para evitar duplicatas
       let rows: Array<{
         ano: number; cargo: string; uf: string; turno: number;
@@ -1036,7 +1043,10 @@ export const psbRouter = router({
         partidoSigla: string; candidatoSequencial: string; nomeMunicipio: string;
       }>;
 
-      const query = `
+      // Query principal: candidate_results com UNION CPF + nome COLLATE
+      // O UNION garante que anos sem CPF (ex: 2018) também sejam incluídos
+      const namePrefixForMain = candidatoNome.split(' ').slice(0, 2).join(' ') + '%';
+      const mainQuery = cpf && cpf.length > 5 ? `
         SELECT cr.ano, cr.cargo, cr.uf, cr.turno, cr.totalVotos, cr.percentualSobreValidos,
                cr.situacao, cr.eleito, cr.receitaTotal, cr.despesaTotal, cr.partidoSigla,
                cr.candidatoSequencial,
@@ -1047,12 +1057,79 @@ export const psbRouter = router({
           FROM candidate_zone_results
           GROUP BY candidatoSequencial, nomeMunicipio, ano
         ) czr ON cr.candidatoSequencial = czr.candidatoSequencial AND cr.ano = czr.ano
-        WHERE ${cpf && cpf.length > 5 ? "cr.cpf=?" : "cr.candidatoNome=? AND cr.uf=?"}
+        WHERE cr.cpf=?
+        UNION
+        SELECT cr.ano, cr.cargo, cr.uf, cr.turno, cr.totalVotos, cr.percentualSobreValidos,
+               cr.situacao, cr.eleito, cr.receitaTotal, cr.despesaTotal, cr.partidoSigla,
+               cr.candidatoSequencial,
+               czr.nomeMunicipio
+        FROM candidate_results cr
+        LEFT JOIN (
+          SELECT candidatoSequencial, nomeMunicipio, ano
+          FROM candidate_zone_results
+          GROUP BY candidatoSequencial, nomeMunicipio, ano
+        ) czr ON cr.candidatoSequencial = czr.candidatoSequencial AND cr.ano = czr.ano
+        WHERE cr.candidatoNome COLLATE utf8mb4_general_ci LIKE ? AND cr.uf=?
+        ORDER BY ano ASC, turno ASC
+      ` : `
+        SELECT cr.ano, cr.cargo, cr.uf, cr.turno, cr.totalVotos, cr.percentualSobreValidos,
+               cr.situacao, cr.eleito, cr.receitaTotal, cr.despesaTotal, cr.partidoSigla,
+               cr.candidatoSequencial,
+               czr.nomeMunicipio
+        FROM candidate_results cr
+        LEFT JOIN (
+          SELECT candidatoSequencial, nomeMunicipio, ano
+          FROM candidate_zone_results
+          GROUP BY candidatoSequencial, nomeMunicipio, ano
+        ) czr ON cr.candidatoSequencial = czr.candidatoSequencial AND cr.ano = czr.ano
+        WHERE cr.candidatoNome=? AND cr.uf=?
         ORDER BY cr.ano ASC, cr.turno ASC
       `;
+      const mainParams = cpf && cpf.length > 5
+        ? [cpf, namePrefixForMain, uf]
+        : [candidatoNome, uf];
+      rows = await queryTidb(mainQuery, mainParams);
 
-      const queryParams = cpf && cpf.length > 5 ? [cpf] : [candidatoNome, uf];
-      rows = await queryTidb(query, queryParams);
+      // Complementar com dados da tabela candidates (DivulgaCand) para anos sem CPF (ex: 2010)
+      // Usa COLLATE utf8mb4_general_ci para ignorar acentos, e prefixo das 2 primeiras palavras
+      // para cobrir variações de nome (ex: "LIDICE DA MATA" vs "LÍDICE DA MATA E SOUZA")
+      const existingYears = new Set(rows.map(r => Number(r.ano)));
+      try {
+        // Extrair prefixo: primeiras 2 palavras do nome (sem acento via COLLATE)
+        const nameParts = candidatoNome.split(' ');
+        const namePrefix = nameParts.slice(0, 2).join(' ') + '%';
+        const candidatesRows = await queryTidb<{
+          ano: number; cargo: string; uf: string; situacao: string; eleito: number;
+          partidoSigla: string; sequencial: string;
+        }>(
+          `SELECT ano, cargo, uf, situacao, eleito, partidoSigla, sequencial
+           FROM candidates
+           WHERE nome COLLATE utf8mb4_general_ci LIKE ? AND uf=?
+           ORDER BY ano ASC`,
+          [namePrefix, uf]
+        );
+        for (const c of candidatesRows) {
+          const yr = Number(c.ano);
+          if (!existingYears.has(yr)) {
+            rows.push({
+              ano: yr,
+              cargo: c.cargo,
+              uf: c.uf ?? uf,
+              turno: 1,
+              totalVotos: 0,
+              percentualSobreValidos: 0,
+              situacao: c.situacao ?? "ELEITO",
+              eleito: c.eleito ?? 1,
+              receitaTotal: 0,
+              despesaTotal: 0,
+              partidoSigla: c.partidoSigla,
+              candidatoSequencial: c.sequencial ?? input.sequencial,
+              nomeMunicipio: "",
+            });
+            existingYears.add(yr);
+          }
+        }
+      } catch (_) { /* tabela candidates pode não existir em todos os ambientes */ }
 
       // Agrupa por ano+cargo, priorizando turno 2 se eleito, senão turno 1
       const grouped: Record<string, typeof rows[0]> = {};
