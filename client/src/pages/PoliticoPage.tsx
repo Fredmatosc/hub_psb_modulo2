@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import PSBLayout from "@/components/PSBLayout";
+import { StaticAffiliationBadge } from "@/components/AffiliationBadge";
 import {
   User, MapPin, Award, TrendingUp, DollarSign, BarChart2,
   CheckCircle, XCircle, Loader2, Calendar, Users, Target
@@ -233,22 +234,20 @@ export default function PoliticoPage() {
                   <div className="w-3 h-3 rounded-full" style={{ background: getPartyColor(profile.party) }} />
                   <span className="text-muted-foreground">{profile.party}</span>
                 </div>
-                {/* Badge de mudança de filiação */}
-                {affiliationOverride && affiliationOverride.status === 'left_psb' && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-300">
-                    <span>⚠️ Saiu do PSB</span>
-                    {affiliationOverride.currentParty && (
-                      <span>→ {affiliationOverride.currentParty}</span>
-                    )}
-                  </div>
-                )}
-                {affiliationOverride && affiliationOverride.status === 'joined_psb' && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
-                    <span>✅ Entrou no PSB</span>
-                    {affiliationOverride.originalParty && (
-                      <span className="text-green-600">(era {affiliationOverride.originalParty})</span>
-                    )}
-                  </div>
+                {/* Badge de filiação partidária */}
+                {affiliationOverride ? (
+                  <StaticAffiliationBadge
+                    status={affiliationOverride.status as 'left_psb' | 'joined_psb' | 'psb_original'}
+                    originalParty={affiliationOverride.originalParty ?? undefined}
+                    currentParty={affiliationOverride.currentParty ?? undefined}
+                    currentPartyName={affiliationOverride.currentPartyName ?? undefined}
+                    changeDate={affiliationOverride.changeDate}
+                    notes={affiliationOverride.notes ?? undefined}
+                    size="md"
+                    showLabel
+                  />
+                ) : (
+                  <StaticAffiliationBadge status="psb_original" size="md" showLabel />
                 )}
               </div>
             </div>

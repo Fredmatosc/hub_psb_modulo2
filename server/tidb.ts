@@ -3,14 +3,15 @@ import mysql from "mysql2/promise";
 let _tidbPool: mysql.Pool | null = null;
 
 /**
- * Retorna um pool de conexões com o banco TiDB externo (mapa_votacao_psb).
- * Usa a variável TIDB_DATABASE_URL para conectar.
+ * Retorna um pool de conexões com o banco eleitoral compartilhado.
+ * Usa SHARED_ELECTORAL_DB_URL (banco do Mapa de Votação) como fonte principal,
+ * com fallback para TIDB_DATABASE_URL.
  */
 export function getTidbPool(): mysql.Pool {
   if (!_tidbPool) {
-    const url = process.env.TIDB_DATABASE_URL;
+    const url = process.env.SHARED_ELECTORAL_DB_URL || process.env.TIDB_DATABASE_URL;
     if (!url) {
-      throw new Error("TIDB_DATABASE_URL não configurada");
+      throw new Error("SHARED_ELECTORAL_DB_URL ou TIDB_DATABASE_URL não configurada");
     }
 
     // Parse da URL mysql://user:pass@host:port/db?ssl=...

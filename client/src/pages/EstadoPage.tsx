@@ -7,6 +7,7 @@ import {
   MapPin, Globe, Instagram, Facebook, ChevronRight, Loader2,
   BarChart2, Calendar, DollarSign
 } from "lucide-react";
+import { AffiliationBadge } from "@/components/AffiliationBadge";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, BarChart, Bar
@@ -360,7 +361,10 @@ export default function EstadoPage() {
                             </td>
                             <td className="px-3 py-2.5">
                               <p className="font-medium text-foreground">{item.nameUrna || item.name}</p>
-                              <p className="text-xs text-muted-foreground">{item.name}</p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <p className="text-xs text-muted-foreground">{item.name !== item.nameUrna ? item.name : ''}</p>
+                                <AffiliationBadge sequencial={item.sequencial} originalParty="PSB" size="sm" />
+                              </div>
                             </td>
                             {(activeTab === "VEREADOR" || activeTab === "PREFEITO") && (
                               <td className="px-3 py-2.5 text-sm text-muted-foreground hidden sm:table-cell">

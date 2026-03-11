@@ -121,3 +121,37 @@
 - [x] Criar página AdminPage (/admin) com gestão de diretórios estaduais e filiações
 - [x] Adicionar link "Painel Admin" no sidebar para usuários com role=admin
 - [x] Registrar rota /admin no App.tsx
+
+## Correção de Inconsistências nos Dados (Mar/2026)
+- [ ] Investigar por que apenas 1 governador aparece (deveria ser 2: João Azevedo/PB e Renato Casagrande/ES)
+- [ ] Investigar por que apenas 1 senador aparece (deveria ser 4: Ana Paula Lobato/MA, Jorge Kajuru/GO, Flávio Arns/PR, Cid Gomes/CE)
+- [ ] Verificar a query getNationalSummary e os filtros de cargo/partido/eleição
+- [ ] Verificar se os dados de deputados federais (14), estaduais (55), prefeitos (313) e vereadores (3.572) estão corretos
+- [ ] Corrigir os filtros de query para incluir todos os eleitos PSB nos cargos corretos
+
+## Sistema Inteligente de Filiação Partidária (Mar/2026)
+- [ ] Investigar API TSE de filiados (dados abertos) para consulta de partido atual por CPF
+- [ ] Implementar endpoint de sincronização automática de filiação via TSE
+- [ ] Corrigir getNationalSummary para aplicar overrides de filiação nas contagens
+- [ ] Corrigir getStateRanking para aplicar overrides de filiação
+- [ ] Adicionar badges visuais em todos os cards de listagem (estado, cargo, município)
+- [ ] Badge "Migrou para o PSB" (azul) para eleitos por outros partidos que hoje são PSB
+- [ ] Badge "Saiu do PSB" (vermelho) para eleitos pelo PSB que hoje estão em outro partido
+- [ ] Badge "Eleito pelo PSB" (verde) para quem foi eleito e permanece no PSB
+
+## Painel Admin — Manutenção Manual de Filiação
+- [ ] Corrigir queries getNationalSummary para aplicar overrides nas contagens
+- [ ] Melhorar painel admin: busca de político por nome/UF/cargo
+- [ ] Registro de mudança de filiação com confirmação visual
+- [ ] Importação em lote via CSV no painel admin
+- [ ] Badges visuais em todas as listagens (CargoPage, EstadoPage, MunicipioPage, PoliticoPage)
+
+## Integração com banco do Mapa de Votação
+- [x] Conectar Hub PSB ao banco compartilhado do Mapa de Votação (SHARED_ELECTORAL_DB_URL)
+- [x] Investigar dados de filiação no banco compartilhado (CPF, anos extras, tabela candidates)
+- [x] Implementar detecção automática de troca de partido via cruzamento CPF entre eleições
+- [x] Painel admin com busca de políticos integrada ao banco compartilhado
+- [x] Sistema de overrides compartilhado entre Hub PSB e Mapa de Votação (tabela no banco compartilhado)
+- [x] Criar helper `server/affiliationOverrides.ts` para CRUD no banco compartilhado
+- [x] Atualizar admin.ts para usar o helper (sem mais dependência do Drizzle para filiação)
+- [x] Migrar 6 overrides iniciais para o banco compartilhado

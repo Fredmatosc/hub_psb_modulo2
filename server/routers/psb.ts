@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc";
+import { z } from "zod";import { publicProcedure, router } from "../_core/trpc";
 import { queryTidb, getCached, setCached } from "../tidb";
+import { getAllOverrides } from "../affiliationOverrides";
 import { gunzipSync } from "zlib";
 
 // ─── CONSTANTES ──────────────────────────────────────────────────────────────
@@ -261,44 +261,128 @@ export const psbRouter = router({
 
   // ─── RESUMO NACIONAL ────────────────────────────────────────────────────────
   getNationalSummary: publicProcedure.query(async () => {
-    const cacheKey = "psb:national:summary:v2";
+    const cacheKey = "psb:national:summary:v6";
     const cached = getCached<unknown>(cacheKey);
     if (cached) return cached;
 
+    // Busca overrides de filiação do banco compartilhado (Mapa de Votação)
+    const rawOverrides = await getAllOverrides();
+    // Normaliza para o formato usado pela lógica abaixo
+    const overrides = rawOverrides.map(o => ({
+      sequencial: o.candidato_sequencial,
+      originalParty: o.original_party ?? '',
+      currentParty: o.current_party ?? '',
+    }));
+
+    // Sequenciais que SAÍRAM do PSB (eleitos pelo PSB, hoje em outro partido)
+    // Exclui sequenciais ficticios (suplentes) pois não existem no banco externo
+    const FICTITIOUS_PREFIX = 'SUPLENTE_';
+    const leftPsbSeqs = new Set(overrides
+      .filter(o => o.originalParty === 'PSB' && o.currentParty !== 'PSB' && !o.sequencial.startsWith(FICTITIOUS_PREFIX))
+      .map(o => o.sequencial));
+
+    // Overrides de quem ENTROU no PSB (eleitos por outro partido, hoje no PSB)
+    // Inclui também suplentes PSB (SUP_PSB) que assumiram mandato
+    const joinedPsbSeqs = overrides
+      .filter(o => (o.originalParty !== 'PSB' && o.originalParty !== 'SUP_PSB') && o.currentParty === 'PSB')
+      .map(o => o.sequencial);
+
+    // Suplentes PSB que assumiram mandato (sequencial ficticio, contagem manual)
+    const supplantsPsb = overrides.filter(
+      o => o.originalParty === 'SUP_PSB' && o.currentParty === 'PSB'
+    );
+
+    // Helper para excluir saídas do PSB da query base
+    const excludeSeqs = (seqs: Set<string>) =>
+      seqs.size > 0 ? `AND candidatoSequencial NOT IN (${Array.from(seqs).map(() => '?').join(',')})` : '';
+    const excludeParams = (seqs: Set<string>) => Array.from(seqs);
+
+    // Busca o cargo dos políticos que entraram no PSB (para somar nas contagens corretas)
+    // Usa o banco externo para identificar cargo/ano de cada sequencial
+    // Separa sequenciais reais (no banco externo) de ficticios (suplentes/casos especiais)
+    const realJoinedSeqs = joinedPsbSeqs.filter(s => !s.startsWith(FICTITIOUS_PREFIX));
+    // fictitiousJoined: entrou no PSB via sequencial ficticio (ex: suplente de outro partido)
+    // Exclui SUP_PSB pois esses já são contados em supplantsPsb
+    const fictitiousJoined = overrides.filter(
+      o => o.originalParty !== 'PSB' && o.originalParty !== 'SUP_PSB' && o.currentParty === 'PSB' && o.sequencial.startsWith(FICTITIOUS_PREFIX)
+    );
+
+    let joinedByCargo: Record<string, number> = {};
+    if (realJoinedSeqs.length > 0) {
+      const placeholders = realJoinedSeqs.map(() => '?').join(',');
+      const joinedRows = await queryTidb<{ cargo: string; ano: number; count: number }>(
+        `SELECT cargo, ano, COUNT(*) as count FROM candidate_results
+         WHERE candidatoSequencial IN (${placeholders}) AND eleito=1
+         GROUP BY cargo, ano`,
+        realJoinedSeqs
+      );
+      for (const row of joinedRows) {
+        const key = `${row.cargo}:${row.ano}`;
+        joinedByCargo[key] = (joinedByCargo[key] ?? 0) + Number(row.count);
+      }
+    }
+
+    // Suplentes que assumiram mandato: contados pelo campo notes (cargo:ano)
+    // Formato esperado no notes: "cargo:SENADOR ano:2022" ou inferido pelo contexto
+    // Por ora, suplentes de SENADOR 2022 contam como +1 senador
+    for (const fictitious of fictitiousJoined) {
+      // Inferir cargo/ano pelo sequencial ficticio: SUPLENTE_{CARGO}_{UF}_{ANO}
+      const parts = fictitious.sequencial.split('_'); // ['SUPLENTE', 'MA', '2022']
+      // Formato: SUPLENTE_{UF}_{ANO} → assume cargo SENADOR
+      if (parts.length >= 3) {
+        const ano = parseInt(parts[parts.length - 1]);
+        const key = `SENADOR:${ano}`;
+        joinedByCargo[key] = (joinedByCargo[key] ?? 0) + 1;
+      }
+    }
+
     const [mayors, councilors, fedDeps, stateDeps, distDeps, senators, governors] = await Promise.all([
       queryTidb<{ total: number }>(
-        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='PREFEITO' AND ano=2024 AND turno=1`
+        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='PREFEITO' AND ano=2024 ${excludeSeqs(leftPsbSeqs)}`,
+        excludeParams(leftPsbSeqs)
       ),
       queryTidb<{ total: number }>(
-        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='VEREADOR' AND ano=2024 AND turno=1`
+        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='VEREADOR' AND ano=2024 ${excludeSeqs(leftPsbSeqs)}`,
+        excludeParams(leftPsbSeqs)
       ),
       queryTidb<{ total: number }>(
-        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='DEPUTADO FEDERAL' AND ano=2022 AND turno=1`
+        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='DEPUTADO FEDERAL' AND ano=2022 ${excludeSeqs(leftPsbSeqs)}`,
+        excludeParams(leftPsbSeqs)
       ),
       queryTidb<{ total: number }>(
-        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='DEPUTADO ESTADUAL' AND ano=2022 AND turno=1`
+        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='DEPUTADO ESTADUAL' AND ano=2022 ${excludeSeqs(leftPsbSeqs)}`,
+        excludeParams(leftPsbSeqs)
       ),
       queryTidb<{ total: number }>(
-        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='DEPUTADO DISTRITAL' AND ano=2022 AND turno=1`
+        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='DEPUTADO DISTRITAL' AND ano=2022 ${excludeSeqs(leftPsbSeqs)}`,
+        excludeParams(leftPsbSeqs)
       ),
       queryTidb<{ total: number }>(
-        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='SENADOR' AND ano=2022 AND turno=1`
+        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='SENADOR' AND ano=2022 ${excludeSeqs(leftPsbSeqs)}`,
+        excludeParams(leftPsbSeqs)
       ),
       queryTidb<{ total: number }>(
-        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='GOVERNADOR' AND ano=2022 AND turno=1`
+        `SELECT COUNT(*) as total FROM candidate_results WHERE partidoSigla='PSB' AND eleito=1 AND cargo='GOVERNADOR' AND ano=2022 ${excludeSeqs(leftPsbSeqs)}`,
+        excludeParams(leftPsbSeqs)
       ),
     ]);
 
     const result = {
-      mayors: Number(mayors[0]?.total ?? 0),
-      councilors: Number(councilors[0]?.total ?? 0),
-      federalDeputies: Number(fedDeps[0]?.total ?? 0),
-      stateDeputies: Number(stateDeps[0]?.total ?? 0) + Number(distDeps[0]?.total ?? 0),
-      senators: Number(senators[0]?.total ?? 0),
-      governors: Number(governors[0]?.total ?? 0),
+      mayors: Number(mayors[0]?.total ?? 0) + (joinedByCargo['PREFEITO:2024'] ?? 0),
+      councilors: Number(councilors[0]?.total ?? 0) + (joinedByCargo['VEREADOR:2024'] ?? 0),
+      federalDeputies: Number(fedDeps[0]?.total ?? 0) + (joinedByCargo['DEPUTADO FEDERAL:2022'] ?? 0),
+      stateDeputies: Number(stateDeps[0]?.total ?? 0) + Number(distDeps[0]?.total ?? 0) + (joinedByCargo['DEPUTADO ESTADUAL:2022'] ?? 0) + (joinedByCargo['DEPUTADO DISTRITAL:2022'] ?? 0),
+      senators: Number(senators[0]?.total ?? 0) + (joinedByCargo['SENADOR:2022'] ?? 0) + (joinedByCargo['SENADOR:2018'] ?? 0) + supplantsPsb.length,
+      governors: Number(governors[0]?.total ?? 0) + (joinedByCargo['GOVERNADOR:2022'] ?? 0),
+      // Metadados para exibição
+      affiliationOverrides: {
+        leftPsb: leftPsbSeqs.size,
+        joinedPsb: joinedPsbSeqs.length,
+        lastSync: new Date().toISOString(),
+      },
     };
 
-    setCached(cacheKey, result, 86400); // 24h
+    setCached(cacheKey, result, 3600); // 1h (mais curto pois overrides mudam)
     return result;
   }),
 
@@ -1130,41 +1214,28 @@ export const psbRouter = router({
   getAffiliationOverride: publicProcedure
     .input(z.object({ sequencial: z.string() }))
     .query(async ({ input }) => {
-      const { getDb } = await import("../db");
-      const { politicianAffiliationOverrides } = await import("../../drizzle/schema");
-      const { eq } = await import("drizzle-orm");
-
-      const db = await getDb();
-      if (!db) return null;
-
-      const rows = await db
-        .select()
-        .from(politicianAffiliationOverrides)
-        .where(eq(politicianAffiliationOverrides.sequencial, input.sequencial))
-        .limit(1);
-
-      if (!rows.length) return null;
-      const r = rows[0];
+      const { getOverrideBySequencial } = await import("../affiliationOverrides");
+      const r = await getOverrideBySequencial(input.sequencial);
+      if (!r) return null;
       return {
-        sequencial: r.sequencial,
-        candidateName: r.candidateName,
+        sequencial: r.candidato_sequencial,
+        candidateName: r.candidate_name,
         uf: r.uf,
-        originalParty: r.originalParty,
-        currentParty: r.currentParty,
-        currentPartyName: r.currentPartyName,
-        changeDate: r.changeDate,
+        originalParty: r.original_party,
+        currentParty: r.current_party,
+        currentPartyName: r.current_party_name,
+        changeDate: r.change_date,
         notes: r.notes,
         verified: r.verified,
-        // Determina o status baseado nos partidos
-        status: r.currentParty === 'PSB'
+        status: r.current_party === 'PSB'
           ? 'joined_psb'
-          : r.originalParty === 'PSB'
+          : r.original_party === 'PSB'
             ? 'left_psb'
             : 'psb_current',
       };
     }),
 
-  // ─── FILIAÇÃO PARTIDÁRIA: lista todos os overrides ──────────────────────────────
+  // ─── FILIAÇÃO PARTIDÁRIA: lista todos os overrides ──────────────────────────
   listAffiliationOverrides: publicProcedure
     .input(z.object({
       uf: z.string().optional(),
@@ -1173,41 +1244,26 @@ export const psbRouter = router({
       pageSize: z.number().default(50),
     }))
     .query(async ({ input }) => {
-      const { getDb } = await import("../db");
-      const { politicianAffiliationOverrides } = await import("../../drizzle/schema");
-      const { eq, and } = await import("drizzle-orm");
-
-      const db = await getDb();
-      if (!db) return [];
-
-      const conditions: ReturnType<typeof eq>[] = [];
-      if (input.uf) {
-        conditions.push(eq(politicianAffiliationOverrides.uf, input.uf.toUpperCase()));
-      }
-      if (input.status === 'left_psb') {
-        conditions.push(eq(politicianAffiliationOverrides.originalParty, 'PSB'));
-      } else if (input.status === 'joined_psb') {
-        conditions.push(eq(politicianAffiliationOverrides.currentParty, 'PSB'));
-      }
-
-      const baseQuery = db.select().from(politicianAffiliationOverrides);
-      const rows = await (conditions.length > 0
-        ? baseQuery.where(and(...conditions))
-        : baseQuery
-      ).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
-
-      return rows.map(r => ({
+      const { listOverrides } = await import("../affiliationOverrides");
+      const statusFilter = input.status === 'all' ? undefined : input.status as 'left_psb' | 'joined_psb';
+      const { items } = await listOverrides({
+        uf: input.uf,
+        status: statusFilter,
+        page: input.page,
+        pageSize: input.pageSize,
+      });
+      return items.map(r => ({
         id: r.id,
-        sequencial: r.sequencial,
-        candidateName: r.candidateName,
+        sequencial: r.candidato_sequencial,
+        candidateName: r.candidate_name,
         uf: r.uf,
-        originalParty: r.originalParty,
-        currentParty: r.currentParty,
-        currentPartyName: r.currentPartyName,
-        changeDate: r.changeDate,
+        originalParty: r.original_party,
+        currentParty: r.current_party,
+        currentPartyName: r.current_party_name,
+        changeDate: r.change_date,
         notes: r.notes,
         verified: r.verified,
-        status: r.currentParty === 'PSB' ? 'joined_psb' : 'left_psb',
+        status: r.current_party === 'PSB' ? 'joined_psb' : 'left_psb',
       }));
     }),
 });

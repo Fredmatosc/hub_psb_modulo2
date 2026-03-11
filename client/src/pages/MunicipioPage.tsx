@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Users, MapPin, TrendingUp, DollarSign, Building2, Info } from "lucide-react";
+import { AffiliationBadge } from "@/components/AffiliationBadge";
 
 const STATE_NAMES: Record<string, string> = {
   AC: "Acre", AL: "Alagoas", AP: "Amapá", AM: "Amazonas", BA: "Bahia",
@@ -166,7 +167,10 @@ export default function MunicipioPage() {
                           )}
                         </div>
                       </div>
-                      <Badge className="bg-red-600 text-white">Eleito</Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className="bg-red-600 text-white">Eleito</Badge>
+                        <AffiliationBadge sequencial={p.sequencial} originalParty="PSB" size="sm" />
+                      </div>
                     </div>
                   </Link>
                 ))}

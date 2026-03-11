@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, candidato_sequencial, candidate_name, uf, original_party, current_party, change_date, notes FROM politician_affiliation_overrides ORDER BY current_party, candidate_name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2CrXQx4C86zrDpC.ce4fcbfc6701 --database fLifwRuGWeM9kwv26nFo5c --execute SELECT id, candidato_sequencial, candidate_name, uf, original_party, current_party, change_date, notes FROM politician_affiliation_overrides ORDER BY current_party, candidate_name;",
+  "rows": [
+    {
+      "id": "6",
+      "candidato_sequencial": "SUPLENTE_MA_2022",
+      "candidate_name": "ANA PAULA DIAS LOBATO NOVA ALVES",
+      "uf": "MA",
+      "original_party": "PSB",
+      "current_party": "PSB",
+      "change_date": "2025-08-06",
+      "notes": "Suplente de Flávio Dino (PSB-MA 2022). Assumiu o mandato em 2024. Saiu para PDT em abr/2024, voltou ao PSB em ago/2025."
+    },
+    {
+      "id": "5",
+      "candidato_sequencial": "60000610981",
+      "candidate_name": "CID FERREIRA GOMES",
+      "uf": "CE",
+      "original_party": "PDT",
+      "current_party": "PSB",
+      "change_date": "2024-01-01",
+      "notes": "Senador eleito pelo PDT em 2018, voltou ao PSB em 2024. Líder da bancada PSB no Senado."
+    },
+    {
+      "id": "3",
+      "candidato_sequencial": "160000609967",
+      "candidate_name": "FLAVIO JOSE ARNS",
+      "uf": "PR",
+      "original_party": "REDE",
+      "current_party": "PSB",
+      "change_date": "2023-01-31",
+      "notes": "Senador eleito pela REDE em 2018, filiou-se ao PSB em jan/2023"
+    },
+    {
+      "id": "4",
+      "candidato_sequencial": "90000613472",
+      "candidate_name": "JORGE KAJURU REIS DA COSTA NASSER",
+      "uf": "GO",
+      "original_party": "PRP",
+      "current_party": "PSB",
+      "change_date": "2023-01-31",
+      "notes": "Senador eleito pelo PRP em 2018, filiou-se ao PSB em jan/2023"
+    },
+    {
+      "id": "2",
+      "candidato_sequencial": "100001667487",
+      "candidate_name": "CARLOS ORLEANS BRANDÃO JÚNIOR",
+      "uf": "MA",
+      "original_party": "PSB",
+      "current_party": "S/P",
+      "change_date": "2025-09-17",
+      "notes": "Governador do MA se desfiliou do PSB em 17/09/2025 sem comunicar ao partido"
+    },
+    {
+      "id": "1",
+      "candidato_sequencial": "100001607043",
+      "candidate_name": "FLÁVIO DINO DE CASTRO E COSTA",
+      "uf": "MA",
+      "original_party": "PSB",
+      "current_party": "STF",
+      "change_date": "2024-02-19",
+      "notes": "Renunciou ao mandato de senador e se desfiliou do PSB para assumir vaga no STF em fev/2024"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcandidato_sequencial\tcandidate_name\tuf\toriginal_party\tcurrent_party\tchange_date\tnotes\n6\tSUPLENTE_MA_2022\tANA PAULA DIAS LOBATO NOVA ALVES\tMA\tPSB\tPSB\t2025-08-06\tSuplente de Flávio Dino (PSB-MA 2022). Assumiu o mandato em 2024. Saiu para PDT em abr/2024, voltou ao PSB em ago/2025.\n5\t60000610981\tCID FERREIRA GOMES\tCE\tPDT\tPSB\t2024-01-01\tSenador eleito pelo PDT em 2018, voltou ao PSB em 2024. Líder da bancada PSB no Senado.\n3\t160000609967\tFLAVIO JOSE ARNS\tPR\tREDE\tPSB\t2023-01-31\tSenador eleito pela REDE em 2018, filiou-se ao PSB em jan/2023\n4\t90000613472\tJORGE KAJURU REIS DA COSTA NASSER\tGO\tPRP\tPSB\t2023-01-31\tSenador eleito pelo PRP em 2018, filiou-se ao PSB em jan/2023\n2\t100001667487\tCARLOS ORLEANS BRANDÃO JÚNIOR\tMA\tPSB\tS/P\t2025-09-17\tGovernador do MA se desfiliou do PSB em 17/09/2025 sem comunicar ao partido\n1\t100001607043\tFLÁVIO DINO DE CASTRO E COSTA\tMA\tPSB\tSTF\t2024-02-19\tRenunciou ao mandato de senador e se desfiliou do PSB para assumir vaga no STF em fev/2024\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

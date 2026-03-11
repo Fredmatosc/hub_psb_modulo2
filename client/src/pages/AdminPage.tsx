@@ -5,7 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Shield, Edit2, Save, X, Plus, Trash2, Loader2,
   Building2, Users, ChevronDown, ChevronUp, Search,
-  CheckCircle, AlertTriangle, Info
+  CheckCircle, AlertTriangle, Info, RefreshCw, Zap, Eye, UserMinus, UserPlus
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,7 +26,24 @@ type AffiliationOverride = {
   notes?: string | null; verified?: boolean | null; status: string;
 };
 
-// ─── Componente de edição de diretório estadual ──────────────────────────────
+type DetectedChange = {
+  nome: string; uf: string; seqPsb: string;
+  cargoOriginal?: string; anoOriginal?: number;
+  novoPartido?: string; novoAno?: number; novoCargo?: string;
+  partidoOriginal?: string; anoPsb?: number; cargoPsb?: string;
+  tipo: 'saida' | 'entrada';
+};
+
+type DetectResult = {
+  saidasDetectadas: number;
+  entradasDetectadas: number;
+  totalNovos: number;
+  dryRun: boolean;
+  saidas: Omit<DetectedChange, 'tipo'>[];
+  entradas: Omit<DetectedChange, 'tipo'>[];
+};
+
+// ─── Componente de edição de diretório estadual ─────────────────────────────────────────────
 
 function StateDirectoryRow({ dir, onSave }: { dir: StateDir; onSave: () => void }) {
   const [editing, setEditing] = useState(false);
@@ -340,6 +357,27 @@ export default function AdminPage() {
     onError: (e) => toast.error(`Erro ao remover: ${e.message}`),
   });
 
+  const [detectResult, setDetectResult] = useState<DetectResult | null>(null);
+  const [showDetectPreview, setShowDetectPreview] = useState(false);
+
+  const detectMutation = trpc.admin.detectPartyChanges.useMutation({
+    onSuccess: (data) => {
+      setDetectResult(data);
+      if (!data.dryRun) {
+        refetchAff();
+        toast.success(`${data.totalNovos} mudanças registradas automaticamente.`);
+      } else {
+        setShowDetectPreview(true);
+        if (data.totalNovos === 0) {
+          toast.info('Nenhuma mudança nova detectada.');
+        } else {
+          toast.info(`${data.totalNovos} mudanças detectadas. Revise e confirme.`);
+        }
+      }
+    },
+    onError: (e) => toast.error(`Erro na detecção: ${e.message}`),
+  });
+
   // Verifica se o usuário é admin
   if (authLoading) {
     return (
@@ -458,22 +496,101 @@ export default function AdminPage() {
         {/* Tab: Mudanças de Filiação */}
         {activeTab === "affiliations" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Info size={14} className="text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">
                   Registre políticos eleitos pelo PSB que mudaram de partido, ou que entraram no PSB após eleição por outro partido.
                 </p>
               </div>
-              {!showAffiliationForm && (
+              <div className="flex items-center gap-2">
+                {/* Botão de sincronização automática via TSE */}
                 <button
-                  onClick={() => setShowAffiliationForm(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+                  onClick={() => detectMutation.mutate({ dryRun: true })}
+                  disabled={detectMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors disabled:opacity-50"
+                  title="Detecta automaticamente trocas de partido via cruzamento de CPF entre eleições"
                 >
-                  <Plus size={14} /> Adicionar
+                  {detectMutation.isPending
+                    ? <Loader2 size={14} className="animate-spin" />
+                    : <Zap size={14} />}
+                  Detectar Automático
                 </button>
-              )}
+                {!showAffiliationForm && (
+                  <button
+                    onClick={() => setShowAffiliationForm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+                  >
+                    <Plus size={14} /> Adicionar
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Preview de detecção automática */}
+            {showDetectPreview && detectResult && detectResult.totalNovos > 0 && (
+              <div className="bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap size={16} className="text-violet-600" />
+                    <span className="font-semibold text-sm text-foreground">
+                      {detectResult.totalNovos} mudanças detectadas automaticamente
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowDetectPreview(false)}
+                      className="px-3 py-1 text-xs border border-border rounded-md hover:bg-muted transition-colors"
+                    >
+                      Fechar
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Confirmar o registro de ${detectResult.totalNovos} mudanças de filiação detectadas automaticamente?\n\nEssas mudanças serão marcadas como não verificadas e podem ser revisadas individualmente.`)) {
+                          detectMutation.mutate({ dryRun: false });
+                          setShowDetectPreview(false);
+                        }
+                      }}
+                      disabled={detectMutation.isPending}
+                      className="px-3 py-1 text-xs bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors disabled:opacity-50"
+                    >
+                      Confirmar Todos
+                    </button>
+                  </div>
+                </div>
+                {detectResult.saidas.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-orange-700 dark:text-orange-400 flex items-center gap-1 mb-1">
+                      <UserMinus size={12} /> {detectResult.saidas.length} saídas do PSB detectadas
+                    </p>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {detectResult.saidas.map((s, i) => (
+                        <div key={i} className="text-xs text-muted-foreground bg-background/60 rounded px-2 py-1">
+                          <span className="font-medium text-foreground">{s.nome}</span> ({s.uf}) — eleito PSB {s.anoOriginal} ({s.cargoOriginal}), depois eleito {s.novoPartido} em {s.novoAno} ({s.novoCargo})
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {detectResult.entradas.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-green-700 dark:text-green-400 flex items-center gap-1 mb-1">
+                      <UserPlus size={12} /> {detectResult.entradas.length} entradas no PSB detectadas
+                    </p>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {detectResult.entradas.map((e, i) => (
+                        <div key={i} className="text-xs text-muted-foreground bg-background/60 rounded px-2 py-1">
+                          <span className="font-medium text-foreground">{e.nome}</span> ({e.uf}) — eleito {e.partidoOriginal} em {e.anoOriginal} ({e.cargoOriginal}), depois eleito PSB em {e.anoPsb} ({e.cargoPsb})
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  ⚠️ Detecção baseada em cruzamento de CPF entre eleições. Pode incluir casos de reeleição por partido diferente. Revise antes de confirmar.
+                </p>
+              </div>
+            )}
 
             {showAffiliationForm && (
               <AffiliationForm

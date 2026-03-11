@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, Search, Users, TrendingUp, DollarSign, MapPin, ChevronLeft as Prev, ChevronRight as Next } from "lucide-react";
+import { AffiliationBadge } from "@/components/AffiliationBadge";
 
 const CARGO_LABELS: Record<string, string> = {
   "PREFEITO": "Prefeitos",
@@ -189,13 +190,14 @@ export default function CargoPage() {
                           <p className="font-semibold text-gray-900 truncate group-hover:text-red-700 transition-colors">
                             {p.nameUrna}
                           </p>
-                          <div className="flex items-center gap-1 mt-0.5">
+                          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                             <Badge variant="outline" className="text-xs px-1.5 py-0 border-red-200 text-red-700">
                               {p.uf}
                             </Badge>
                             {isMunicipal && p.municipality && (
                               <span className="text-xs text-gray-500 truncate">{p.municipality}</span>
                             )}
+                            <AffiliationBadge sequencial={p.sequencial} originalParty="PSB" size="sm" />
                           </div>
                           <div className="flex items-center gap-3 mt-2 text-xs text-gray-600">
                             <span className="flex items-center gap-1">
